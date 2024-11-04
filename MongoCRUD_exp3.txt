@@ -1,0 +1,122 @@
+# Start MongoDB shell
+$ mongo
+
+# Switch to 'book' database
+> use book
+
+# Show collections (optional, just to confirm)
+> show collections
+
+# Create 'library' collection (not necessary if it already exists)
+> db.createCollection("library")
+
+# Insert records into 'library' collection
+> db.library.insert({"bid":1,"name":"C++"})
+> db.library.insert({"bid":2,"name":"SEPM","author":"Pressman"})
+> db.library.insert({"bid":3,"name":"CN","author":"Forouzan","cost":700})
+
+# Display all records in 'library' collection
+> db.library.find().pretty()
+
+# Remove the record with bid:1
+> db.library.remove({"bid":1})
+
+# Count remaining documents in 'library'
+> db.library.count()
+
+# Display all records again to verify removal
+> db.library.find().pretty()
+
+# Insert the record with bid:1 again
+> db.library.insert({"bid":1,"name":"C++"})
+
+# Display all records
+> db.library.find().pretty()
+
+# Sort records by 'bid' in ascending order
+> db.library.find().sort({"bid":1})
+
+# Insert additional records
+> db.library.insert({"bid":4,"name":"SPOS","author":"Pearson","cost":500})
+> db.library.insert({"bid":5,"name":"TOC","author":"Addison-Wesley","cost":600})
+> db.library.insert({"bid":6,"name":"AI","author":"McGraw Hill Education","cost":800})
+
+# Display all records
+> db.library.find().pretty()
+
+# Find record(s) with both 'name': "CN" and 'cost': 700
+> db.library.find({$and:[{"name":"CN"},{"cost":700}]}).pretty()
+
+# Find records where 'cost' is either 500 or 800
+> db.library.find({$or:[{"cost":500},{"cost":800}]}).pretty()
+
+# Find records where 'cost' is not equal to 500
+> db.library.find({"cost":{$ne:500}})
+
+# Find records where 'cost' is neither 500 nor 'author' is "Forouzan"
+> db.library.find({$nor:[{"cost":500},{"author":"Forouzan"}]})
+
+# Find records where 'cost' is not greater than 800
+> db.library.find({"cost":{$not:{$gt:800}}})
+
+# Insert an additional record with bid:7
+> db.library.insert({"bid":7,"name":"CC","author":"Wiley Publications","cost":400})
+
+# Display all records
+> db.library.find().pretty()
+
+# Update the first record with 'cost': 400 to have 'cost': 600
+> db.library.update({'cost':400},{$set:{'cost':600}})
+
+# Update the first record with 'cost': 800 to have 'cost': 1200
+> db.library.update({'cost':800},{$set:{'cost':1200}})
+
+# Display all records to confirm updates
+> db.library.find().pretty()
+................................................................................................................
+
+use book
+
+db.library.insert({"bid":1,"name":"C++"})
+db.library.insert({"bid":2,"name":"SEPM","author":"Pressman"})
+db.library.insert({"bid":3,"name":"CN","author":"Forouzan","cost":700})
+
+db.library.find().pretty()
+
+db.library.remove({"bid":1})
+
+db.library.count()
+
+db.library.find().pretty()
+
+db.library.insert({"bid":1,"name":"C++"})
+
+db.library.find().pretty()
+
+db.library.find().sort({"bid":1})
+
+db.library.insert({"bid":4,"name":"SPOS","author":"Pearson","cost":500})
+db.library.insert({"bid":5,"name":"TOC","author":"Addison-Wesley","cost":600})
+db.library.insert({"bid":6,"name":"AI","author":"McGraw Hill Education","cost":800})
+
+db.library.find().pretty()
+
+db.library.find({$and:[{"name":"CN"},{"cost":700}]}).pretty()
+
+db.library.find({$or:[{"cost":500},{"cost":800}]}).pretty()
+
+db.library.find({"cost":{$ne:500}})
+
+db.library.find({$nor:[{"cost":500},{"author":"Forouzan"}]})
+
+db.library.find({"cost":{$not:{$gt:800}}})
+
+db.library.insert({"bid":7,"name":"CC","author":"Wiley Publications","cost":400})
+
+db.library.find().pretty()
+
+db.library.update({'cost':400},{$set:{'cost':600}})
+
+db.library.update({'cost':800},{$set:{'cost':1200}})
+
+db.library.find().pretty()

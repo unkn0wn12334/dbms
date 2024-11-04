@@ -1,0 +1,61 @@
+CREATE DATABASE school;
+
+USE school;
+
+CREATE TABLE students (id INT PRIMARY KEY, name VARCHAR(100), age INT, grade VARCHAR(10));
+
+CREATE TABLE students_copy AS SELECT * FROM students;
+
+SHOW TABLES;
+
+CREATE TABLE students_specific_fields AS SELECT id, name FROM students;
+
+DESCRIBE students_copy;
+
+DESCRIBE students_specific_fields;
+
+CREATE TABLE students_excluding_record AS SELECT * FROM students WHERE id != 1;
+
+CREATE TABLE students_no_records AS SELECT * FROM students WHERE 1 = 0;
+
+ALTER TABLE students ADD email VARCHAR(100);
+
+DESCRIBE students;
+
+ALTER TABLE students MODIFY name VARCHAR(200);
+
+DESCRIBE students;
+
+ALTER TABLE students DROP COLUMN email;
+
+ALTER TABLE students RENAME TO pupils;
+
+SHOW TABLES;
+
+ALTER TABLE pupils RENAME COLUMN name TO full_name;
+
+DESCRIBE pupils;
+
+CREATE VIEW all_pupils_view AS SELECT * FROM pupils;
+
+CREATE VIEW specific_fields_pupils_view AS SELECT id, full_name FROM pupils;
+
+CREATE VIEW specific_pupil_record_view AS SELECT * FROM pupils WHERE id = 1;
+
+CREATE OR REPLACE VIEW pupils_age_above_10_view AS SELECT * FROM pupils WHERE age > 10;
+
+SELECT * FROM pupils;
+
+SELECT * FROM pupils WHERE id = 1;
+
+UPDATE pupils SET grade = 'Final Year' WHERE id = 1;
+
+SELECT * FROM pupils WHERE id = 1;
+
+DELETE FROM pupils WHERE id = 2;
+
+SELECT * FROM pupils;
+
+CREATE INDEX idx_full_name ON pupils (full_name);
+
+SHOW INDEXES FROM pupils;

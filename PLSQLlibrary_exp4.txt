@@ -1,0 +1,119 @@
+-- Step 1: Create the database if it doesn't exist
+-- This checks if "library_db" already exists. If it doesn’t, a new database is created.
+CREATE DATABASE IF NOT EXISTS library_db;
+
+-- Step 2: Select the database to work with
+-- This command tells MySQL to use "library_db" as the current working database for subsequent commands.
+USE library_db;
+
+-- Step 3: Create the Borrower table
+-- This table will store information about each borrower, including their roll number, name, date of issue of a book, 
+-- the name of the book, and the current status ('I' for issued, 'R' for returned).
+CREATE TABLE Borrower (
+    Roll_no INT PRIMARY KEY, -- Unique identifier for each borrower
+    Name VARCHAR(100), -- Name of the borrower
+    Date_of_Issue DATE, -- Date when the book was issued
+    Name_of_Book VARCHAR(100), -- Name of the book borrowed
+    Status CHAR(1) CHECK (Status IN ('I', 'R')) -- 'I' for Issued, 'R' for Returned
+);
+
+-- Step 4: Create the Fine table
+-- This table will store fines for each borrower. Each fine is linked to a borrower's roll number, 
+-- has a date when the fine was incurred, and an amount (Amt).
+CREATE TABLE Fine (
+    Roll_no INT, -- References the roll number from the Borrower table
+    Date DATE, -- Date when the fine was issued
+    Amt DECIMAL(10, 2), -- Amount of the fine
+    FOREIGN KEY (Roll_no) REFERENCES Borrower(Roll_no) -- Sets up a foreign key constraint linking to Borrower table
+);
+
+-- Step 5: Insert sample data into the Borrower table
+-- Adds two sample borrowers to the Borrower table for testing purposes.
+INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book, Status) VALUES (1, 'John Doe', '2024-09-01', 'C++', 'I');
+INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book, Status) VALUES (2, 'Jane Smith', '2024-09-15', 'SEPM', 'I');
+
+-- Step 6: Create the stored procedure for calculating fines
+-- A stored procedure is a reusable SQL block. This procedure calculates fines based on how long a book has been borrowed.
+-- If the fine is positive, it updates the borrower's status and inserts a record in the Fine table.
+
+DELIMITER //
+-- The DELIMITER command changes the end statement symbol temporarily.
+-- This allows defining a multi-line procedure without ending it prematurely with the default ';' delimiter.
+
+CREATE PROCEDURE CalculateFine(IN roll_no INT, IN name_of_book VARCHAR(255))
+BEGIN
+    -- Variable declarations
+    DECLARE v_date_of_issue DATE;
+    DECLARE v_status CHAR(1);
+    DECLARE v_fine_amount DECIMAL(10, 2);
+    DECLARE v_days_borrowed INT;
+    DECLARE v_error_message VARCHAR(255);
+
+    -- Exception handler for book not found
+    -- This handles errors if the book is not found by setting a message to be displayed.
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET v_error_message = 'Error: The book is not currently borrowed by the user.';
+        SELECT v_error_message;
+    END;
+
+    -- Get date of issue and status of the book
+    -- Retrieves the date of issue and status for a specific book and borrower.
+    SELECT Date_of_Issue, Status INTO v_date_of_issue, v_status 
+    FROM Borrower WHERE Roll_no = roll_no AND Name_of_Book = name_of_book;
+
+    -- Check if the book is borrowed
+    -- If the book status is not 'I' (issued), a custom error message is thrown.
+    IF v_status != 'I' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Book not borrowed by this user.';
+    END IF;
+
+    -- Calculate days borrowed
+    -- Calculates the number of days the book has been borrowed.
+    SET v_days_borrowed = DATEDIFF(CURDATE(), v_date_of_issue);
+
+    -- Calculate fine based on days borrowed
+    -- Fine is calculated based on days borrowed. 
+    -- If between 15-30 days, it's 5 per day; over 30 days, it's 50 per day after the first 30 days.
+    IF v_days_borrowed BETWEEN 15 AND 30 THEN
+        SET v_fine_amount = v_days_borrowed * 5;
+    ELSEIF v_days_borrowed > 30 THEN
+        SET v_fine_amount = (30 * 5) + ((v_days_borrowed - 30) * 50);
+    ELSE
+        SET v_fine_amount = 0;
+    END IF;
+
+    -- If there is a fine, update the status and insert into Fine table
+    -- This block updates the book status to 'R' (returned) and inserts the fine into the Fine table.
+    IF v_fine_amount > 0 THEN
+        UPDATE Borrower SET Status = 'R' WHERE Roll_no = roll_no AND Name_of_Book = name_of_book;
+        INSERT INTO Fine (Roll_no, Date, Amt) VALUES (roll_no, CURDATE(), v_fine_amount);
+    END IF;
+
+    -- Final message
+    -- Displays a message indicating the fine amount calculated.
+    SELECT 'Fine calculation completed successfully. Amount: ', v_fine_amount;
+END //
+
+DELIMITER ; -- Reset the delimiter back to ';' to end the procedure.
+
+-- Step 7: Call the stored procedure to calculate fines
+-- Executes the procedure for specific borrowers to test the fine calculation.
+CALL CalculateFine(1, 'C++');  -- Example for Roll_no 1
+CALL CalculateFine(2, 'SEPM');  -- Example for Roll_no 2
+
+-- Step 8: Retrieve all fines
+-- Selects all records from the Fine table to view the fines incurred by each borrower.
+SELECT * FROM Fine;
+
+-- Step 9: Retrieve all borrowers
+-- Selects all records from the Borrower table to view each borrower's current status and book details.
+SELECT * FROM Borrower;
+...............................................................................................................
+Explanation of Key Terms:
+DELIMITER: Temporarily changes the command delimiter, allowing the creation of multi-line procedures.
+CREATE PROCEDURE: Defines a stored procedure, which is a saved collection of SQL statements that can be reused.
+DECLARE: Declares variables inside a stored procedure.
+SIGNAL: Custom SQL error handling to throw an error with a specific message.
+DATEDIFF: Function to calculate the difference in days between two dates.
+IF / ELSEIF / ELSE: Conditional logic to handle different cases within the procedure.

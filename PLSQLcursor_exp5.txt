@@ -1,0 +1,192 @@
+-- Step 1: Create the database if it doesn't exist
+CREATE DATABASE library_db;
+
+-- Step 2: Select the newly created database to work with
+USE library_db;
+
+-- Step 3: Create the Borrower table to store borrower details
+CREATE TABLE Borrower (
+    Roll_no INT PRIMARY KEY,  -- Unique identifier for each borrower
+    Name VARCHAR(100),        -- Name of the borrower
+    Date_of_Issue DATE,       -- Date when the book was issued
+    Name_of_Book VARCHAR(100),-- Name of the book borrowed
+    Status CHAR(1) CHECK (Status IN ('I', 'R')) -- 'I' for Issued, 'R' for Returned
+);
+
+-- Step 4: Create the Fine table to store fine details
+CREATE TABLE Fine (
+    Roll_no INT,              -- References the borrower's roll number
+    Date DATE,                -- Date when the fine is calculated
+    Amt DECIMAL(10, 2),       -- Fine amount
+    FOREIGN KEY (Roll_no) REFERENCES Borrower(Roll_no) -- Foreign key linking to Borrower table
+);
+
+-- Step 5: Insert records into Borrower table
+INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book, Status) VALUES (1, 'John Doe', '2024-09-01', 'C++', 'I');
+INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book, Status) VALUES (2, 'Jane Smith', '2024-09-15', 'SEPM', 'I');
+
+-- Step 6: Create a stored procedure to calculate fines based on days borrowed
+DELIMITER //  -- Switch to custom delimiter for the procedure
+
+CREATE PROCEDURE CalculateFine(IN roll_no INT, IN name_of_book VARCHAR(255))
+BEGIN
+    DECLARE v_date_of_issue DATE;
+    DECLARE v_status CHAR(1);
+    DECLARE v_fine_amount DECIMAL(10, 2);
+    DECLARE v_days_borrowed INT;
+    DECLARE v_error_message VARCHAR(255);
+    
+    -- Exception handler for when the book is not found
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET v_error_message = 'Error: The book is not currently borrowed by the user.';
+        SELECT v_error_message;
+    END;
+    
+    -- Get the date of issue and status for the specified book and borrower
+    SELECT Date_of_Issue, Status INTO v_date_of_issue, v_status 
+    FROM Borrower WHERE Roll_no = roll_no AND Name_of_Book = name_of_book;
+    
+    -- Check if the book is currently issued
+    IF v_status != 'I' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Book not borrowed by this user.';
+    END IF;
+
+    -- Calculate the number of days borrowed
+    SET v_days_borrowed = DATEDIFF(CURDATE(), v_date_of_issue);
+    
+    -- Calculate fine based on the borrowing duration
+    IF v_days_borrowed BETWEEN 15 AND 30 THEN
+        SET v_fine_amount = v_days_borrowed * 5;
+    ELSEIF v_days_borrowed > 30 THEN
+        SET v_fine_amount = (30 * 5) + ((v_days_borrowed - 30) * 50);
+    ELSE
+        SET v_fine_amount = 0;
+    END IF;
+
+    -- If there's a fine, update status and insert the fine record
+    IF v_fine_amount > 0 THEN
+        UPDATE Borrower SET Status = 'R' WHERE Roll_no = roll_no AND Name_of_Book = name_of_book;
+        INSERT INTO Fine (Roll_no, Date, Amt) VALUES (roll_no, CURDATE(), v_fine_amount);
+    END IF;
+
+    -- Display a completion message with the fine amount
+    SELECT 'Fine calculation completed successfully. Amount: ', v_fine_amount;
+END //
+
+DELIMITER ;  -- Reset to default delimiter
+
+-- Step 7: Call the stored procedure to calculate fine for a specific borrower
+CALL CalculateFine(1, 'C++');
+CALL CalculateFine(2, 'SEPM');
+
+-- Step 8: View Fine records
+SELECT * FROM Fine;
+
+-- Step 9: View Borrower records
+SELECT * FROM Borrower;
+
+
+-- Step 1: Create the class database
+CREATE DATABASE class;
+
+-- Step 2: Use the class database
+USE class;
+
+-- Step 3: Create O_RollCall and N_RollCall tables
+CREATE TABLE O_RollCall (
+    roll_no INT(3),    -- Roll number of students
+    name VARCHAR(20)   -- Name of students
+);
+
+CREATE TABLE N_RollCall (
+    roll_no INT(3),    -- Roll number of students (new table)
+    name VARCHAR(20)   -- Name of students (new table)
+);
+
+-- Step 4: Insert records into O_RollCall table
+INSERT INTO O_RollCall VALUES (1, 'Himanshu');
+INSERT INTO O_RollCall VALUES (2, 'Ram');
+INSERT INTO O_RollCall VALUES (3, 'Soham');
+INSERT INTO O_RollCall VALUES (5, 'Mohan');
+INSERT INTO O_RollCall VALUES (6, 'Om');
+INSERT INTO O_RollCall VALUES (9, 'Yash');
+INSERT INTO O_RollCall VALUES (11, 'Mayur');
+
+-- View records in O_RollCall and N_RollCall
+SELECT * FROM O_RollCall;
+SELECT * FROM N_RollCall;
+
+-- Step 5: Create a stored procedure to copy records from O_RollCall to N_RollCall
+DELIMITER //
+
+CREATE PROCEDURE cursor_proc_p1()
+BEGIN
+    DECLARE fin INTEGER DEFAULT 0;
+    DECLARE old_roll INT(3);
+    DECLARE old_name VARCHAR(20);
+    DECLARE new_roll INT(3);
+    DECLARE old_csr CURSOR FOR SELECT roll_no, name FROM O_RollCall;
+    DECLARE new_csr CURSOR FOR SELECT roll_no FROM N_RollCall;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET fin=1;
+
+    OPEN old_csr;
+    OPEN new_csr;
+
+    ss: LOOP
+        FETCH old_csr INTO old_roll, old_name;
+        FETCH new_csr INTO new_roll;
+        
+        IF fin=1 THEN
+            LEAVE ss;
+        END IF;
+
+        -- Insert the record if roll numbers are not matching
+        IF old_roll <> new_roll THEN
+            INSERT INTO N_RollCall VALUES(old_roll, old_name);
+        END IF;
+    END LOOP;
+
+    CLOSE old_csr;
+    CLOSE new_csr;
+END //
+
+DELIMITER ;
+
+-- Step 6: Create another stored procedure with parameter for selective insertion
+DELIMITER //
+
+CREATE PROCEDURE cursor_proc_p2(IN r1 INT)
+BEGIN
+    DECLARE r2 INT;
+    DECLARE exit_loop BOOLEAN DEFAULT FALSE;
+    DECLARE c1 CURSOR FOR SELECT roll_no FROM O_RollCall WHERE roll_no > r1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET exit_loop=TRUE;
+
+    OPEN c1;
+
+    e_loop: LOOP
+        FETCH c1 INTO r2;
+        
+        -- Insert only if roll_no does not exist in N_RollCall
+        IF NOT EXISTS(SELECT * FROM N_RollCall WHERE roll_no = r2) THEN
+            INSERT INTO N_RollCall SELECT * FROM O_RollCall WHERE roll_no = r2;
+        END IF;
+
+        IF exit_loop THEN
+            CLOSE c1;
+            LEAVE e_loop;
+        END IF;
+    END LOOP e_loop;
+END //
+
+DELIMITER ;
+
+-- Step 7: Call the stored procedures to test
+CALL cursor_proc_p2(5); -- Insert records with roll_no > 5
+CALL cursor_proc_p2(3); -- Insert records with roll_no > 3
+CALL cursor_proc_p1();  -- Copy records without parameter
+
+-- View final records in both tables
+SELECT * FROM O_RollCall;
+SELECT * FROM N_RollCall;

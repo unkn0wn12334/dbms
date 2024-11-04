@@ -1,0 +1,92 @@
+-- Create the database 'school' if it doesn't already exist
+CREATE DATABASE school;
+
+-- Select the 'school' database to work with
+USE school;
+
+-- Create 'students' table with columns for student information
+CREATE TABLE students (
+    id INT PRIMARY KEY,           -- Unique identifier for each student
+    name VARCHAR(100),            -- Name of the student
+    age INT,                      -- Age of the student
+    department VARCHAR(50)        -- Department in which the student is enrolled
+);
+
+-- Create 'courses' table with course details and a foreign key linking to 'students'
+CREATE TABLE courses (
+    course_id INT PRIMARY KEY,    -- Unique identifier for each course
+    course_name VARCHAR(100),     -- Name of the course
+    student_id INT,               -- ID of the student taking this course
+    FOREIGN KEY (student_id) REFERENCES students(id) -- Foreign key referencing 'students' table
+);
+
+-- Insert sample data into 'students' table
+INSERT INTO students (id, name, age, department) VALUES
+(1, 'John Doe', 20, 'Computer Science'),
+(2, 'Jane Smith', 22, 'Mathematics'),
+(3, 'Bob Brown', 21, 'Physics'),
+(4, 'Alice Johnson', 19, 'Computer Science');
+
+-- Insert sample data into 'courses' table
+INSERT INTO courses (course_id, course_name, student_id) VALUES
+(101, 'Data Science', 1),
+(102, 'Algebra', 2),
+(103, 'Quantum Mechanics', 3),
+(104, 'Operating Systems', 1),
+(105, 'Calculus', 2),
+(106, 'Machine Learning', 4);
+
+-- Query to list each student with their enrolled courses (INNER JOIN)
+SELECT students.name, courses.course_name
+FROM students
+INNER JOIN courses ON students.id = courses.student_id;
+
+-- Query to list all students and their courses, if any (LEFT JOIN)
+SELECT students.name, courses.course_name
+FROM students
+LEFT JOIN courses ON students.id = courses.student_id;
+
+-- Query to list all courses and the students enrolled, if any (RIGHT JOIN)
+SELECT courses.course_name, students.name
+FROM courses
+RIGHT JOIN students ON students.id = courses.student_id;
+
+-- Simulate a full outer join by combining left and right joins (FULL OUTER JOIN using UNION)
+SELECT students.name, courses.course_name
+FROM students
+LEFT JOIN courses ON students.id = courses.student_id
+UNION
+SELECT students.name, courses.course_name
+FROM courses
+LEFT JOIN students ON students.id = courses.student_id;
+
+-- Generate all possible student-course combinations (CROSS JOIN)
+SELECT students.name, courses.course_name
+FROM students
+CROSS JOIN courses;
+
+-- Query to count total courses each student is enrolled in (correlated subquery)
+SELECT name, 
+       (SELECT COUNT(*) FROM courses WHERE students.id = courses.student_id) AS total_courses
+FROM students;
+
+-- List students who are enrolled in more than 2 courses (subquery with HAVING)
+SELECT name 
+FROM students 
+WHERE id IN (SELECT student_id FROM courses GROUP BY student_id HAVING COUNT(*) > 2);
+
+-- Query to find students older than the average age in their department (correlated subquery)
+SELECT name, age, department
+FROM students AS s1
+WHERE age > (SELECT AVG(age) FROM students AS s2 WHERE s2.department = s1.department);
+
+-- Create a view to simplify the listing of students and their courses
+CREATE VIEW student_courses_view AS
+SELECT students.name, courses.course_name
+FROM students
+INNER JOIN courses ON students.id = courses.student_id;
+
+-- Query the view to list students enrolled in 'Data Science'
+SELECT * 
+FROM student_courses_view
+WHERE course_name = 'Data Science';
